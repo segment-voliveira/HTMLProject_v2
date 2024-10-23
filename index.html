@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Web Tracking</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .field-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="email"], select, textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Web Tracking Test Page</h1>
+
+    <!-- Random Input Fields -->
+    <div class="field-group">
+        <label for="name">Name</label>
+        <input type="text" id="name" placeholder="Enter your name">
+    </div>
+
+    <div class="field-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="Enter your email">
+    </div>
+
+    <div class="field-group">
+        <label for="age">Age</label>
+        <input type="number" id="age" placeholder="Enter your age">
+    </div>
+
+    <div class="field-group">
+        <label for="gender">Gender</label>
+        <select id="gender">
+            <option value="">Select</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+        </select>
+    </div>
+
+    <div class="field-group">
+        <label for="comments">Comments</label>
+        <textarea id="comments" rows="4" placeholder="Enter your comments"></textarea>
+    </div>
+
+    <!-- Random Buttons -->
+    <div class="field-group">
+        <button id="submitBtn">Submit</button>
+        <button id="resetBtn">Reset</button>
+        <button id="randomBtn">Random Action</button>
+    </div>
+
+    <!-- Additional Content -->
+    <div class="field-group">
+        <button id="trackBtn1">Track Action 1</button>
+        <button id="trackBtn2">Track Action 2</button>
+        <button id="trackBtn3">Track Action 3</button>
+    </div>
+
+</div>
+
+<script>
+    // Sample click event handlers to simulate tracking interactions
+    document.getElementById('submitBtn').addEventListener('click', function() {
+        console.log('Submit button clicked');
+        alert('Submit button clicked');
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function() {
+        console.log('Reset button clicked');
+        alert('Reset button clicked');
+    });
+
+    document.getElementById('randomBtn').addEventListener('click', function() {
+        console.log('Random button clicked');
+        alert('Random button clicked');
+    });
+
+    document.getElementById('trackBtn1').addEventListener('click', function() {
+        console.log('Track Action 1 clicked');
+        alert('Track Action 1 clicked');
+    });
+
+    document.getElementById('trackBtn2').addEventListener('click', function() {
+        console.log('Track Action 2 clicked');
+        alert('Track Action 2 clicked');
+    });
+
+    document.getElementById('trackBtn3').addEventListener('click', function() {
+        console.log('Track Action 3 clicked');
+        alert('Track Action 3 clicked');
+    });
+</script>
+
+</body>
+</html>

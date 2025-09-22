@@ -1,11 +1,157 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <script>
-      !function(){var i="analytics",analytics=window[i]=window[i]||[];if(!analytics.initialize)if(analytics.invoked)window.console&&console.error&&console.error("Segment snippet included twice.");else{analytics.invoked=!0;analytics.methods=["trackSubmit","trackClick","trackLink","trackForm","pageview","identify","reset","group","track","ready","alias","debug","page","screen","once","off","on","addSourceMiddleware","addIntegrationMiddleware","setAnonymousId","addDestinationMiddleware","register"];analytics.factory=function(e){return function(){if(window[i].initialized)return window[i][e].apply(window[i],arguments);var n=Array.prototype.slice.call(arguments);if(["track","screen","alias","group","page","identify"].indexOf(e)>-1){var c=document.querySelector("link[rel='canonical']");n.push({__t:"bpc",c:c&&c.getAttribute("href")||void 0,p:location.pathname,u:location.href,s:location.search,t:document.title,r:document.referrer})}n.unshift(e);analytics.push(n);return analytics}};for(var n=0;n<analytics.methods.length;n++){var key=analytics.methods[n];analytics[key]=analytics.factory(key)}analytics.load=function(key,n){var t=document.createElement("script");t.type="text/javascript";t.async=!0;t.setAttribute("data-global-segment-analytics-key",i);t.src="https://cdn.segment.com/analytics.js/v1/" + key + "/analytics.min.js";var r=document.getElementsByTagName("script")[0];r.parentNode.insertBefore(t,r);analytics._loadOptions=n};analytics._writeKey="ynnBGG1XPFccpjHIq1EJxQptGhTZAMvo";;analytics.SNIPPET_VERSION="5.2.0";
-      analytics.load("ynnBGG1XPFccpjHIq1EJxQptGhTZAMvo");
-      analytics.page();
-      }}();
+        !function () {
+            var i = "analytics", analytics = window[i] = window[i] || []; if (!analytics.initialize) if (analytics.invoked) window.console && console.error && console.error("Segment snippet included twice."); else {
+                analytics.invoked = !0; analytics.methods = ["trackSubmit", "trackClick", "trackLink", "trackForm", "pageview", "identify", "reset", "group", "track", "ready", "alias", "debug", "page", "screen", "once", "off", "on", "addSourceMiddleware", "addIntegrationMiddleware", "setAnonymousId", "addDestinationMiddleware", "register"]; analytics.factory = function (e) { return function () { if (window[i].initialized) return window[i][e].apply(window[i], arguments); var n = Array.prototype.slice.call(arguments); if (["track", "screen", "alias", "group", "page", "identify"].indexOf(e) > -1) { var c = document.querySelector("link[rel='canonical']"); n.push({ __t: "bpc", c: c && c.getAttribute("href") || void 0, p: location.pathname, u: location.href, s: location.search, t: document.title, r: document.referrer }) } n.unshift(e); analytics.push(n); return analytics } }; for (var n = 0; n < analytics.methods.length; n++) { var key = analytics.methods[n]; analytics[key] = analytics.factory(key) } analytics.load = function (key, n) { var t = document.createElement("script"); t.type = "text/javascript"; t.async = !0; t.setAttribute("data-global-segment-analytics-key", i); t.src = "https://cdn.segment.com/analytics.js/v1/" + key + "/analytics.min.js"; var r = document.getElementsByTagName("script")[0]; r.parentNode.insertBefore(t, r); analytics._loadOptions = n }; analytics._writeKey = "ynnBGG1XPFccpjHIq1EJxQptGhTZAMvo";; analytics.SNIPPET_VERSION = "5.2.0";
+                analytics.load("UkIhoGsKZxWrrNkMbiwJlUhIv93fBeib");
+                analytics.page();
+            }
+        }();
+
+        const get = (obj, path) => {
+            // Minimal safe getter: "a.b.c" => obj?.a?.b?.c
+            if (!obj || !path) return undefined;
+            return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+        };
+
+        function lsKey(sessionId) {
+            var storagePrefix = 'ef'
+            return storagePrefix + ':products:' + sessionId
+        }
+
+        function saveSet(sessionId, set) {
+            if (!sessionId) return
+            try {
+                localStorage.setItem(lsKey(sessionId), JSON.stringify(Array.from(set)))
+            } catch (e) {
+                // quota or storage disabled; ignore
+            }
+        }
+
+        function loadSet(sessionId) {
+            if (!sessionId) return new Set()
+            try {
+                var raw = localStorage.getItem(lsKey(sessionId))
+                var arr = raw ? JSON.parse(raw) : []
+                if (!Array.isArray(arr)) arr = []
+                return new Set(arr.map(String))
+            } catch (e) {
+                return new Set()
+            }
+        }
+
+        class product_changes_tracker {
+            constructor() {
+                this.name = 'Product Change tracker';
+                this.type = 'enrichment';
+                this.version = '1';
+            }
+
+            isLoaded() {
+                return true;
+            }
+
+            async load(ctx, analytics) {
+
+            }
+
+            async identify(ctx) {
+                let session_id = localStorage.getItem("session_id") || null;
+                var ids = Array.from(loadSet(session_id))
+                var count = ids.length
+
+                ctx.updateEvent('traits.productChangesInLastSession', count);
+            }
+
+            async track(ctx) {
+                let session_id = localStorage.getItem("session_id") || null;
+                var evt = ctx.event || {}
+                if (session_id && evt.event === 'get_premiums') {
+                    var props = evt.properties || {}
+                    var productId = get(props, 'data.product_class')
+
+                    if (productId !== undefined && productId !== null && productId !== '') {
+                        var set = loadSet(session_id)
+                        set.add(String(productId))
+                        saveSet(session_id, set)
+                    }
+                }
+
+                if (session_id) {
+                    var ids = Array.from(loadSet(session_id))
+                    var count = ids.length
+                    // Safely set nested field:
+                    ctx.updateEvent('context.productChangeHistory', {
+                        ids: ids,
+                        count: count,
+                        session_id: session_id
+                    })
+                }
+
+
+                ctx.event.properties.session_id = localStorage.getItem("session_id");
+                return ctx;
+            }
+        }
+
+
+
+        class session_tracker {
+            constructor() {
+                this.name = 'Session Tracker Plugin';
+                this.type = 'before';
+                this.version = '1';
+            }
+
+            isLoaded() {
+                return true;
+            }
+
+            async load(ctx, analytics) {
+                let session_id = localStorage.getItem("session_id") || null;
+                let session_timestamp = localStorage.getItem("session_timestamp") || null;
+
+                const now = new Date();
+
+                const diff = now - session_timestamp;
+
+                if (session_timestamp == null || diff < (30 * 60 * 1000)) {  // Fixed the extra closing parenthesis here
+                    console.log("Setting New Session");
+
+                    let session_id = Array.from({ length: 32 }, () =>
+                        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+                        [Math.floor(Math.random() * 62)]
+                    ).join('');
+
+                    localStorage.setItem("session_id", session_id);
+                    localStorage.setItem("session_timestamp", now);
+                }
+                return;
+            }
+
+            async track(ctx) {
+                ctx.event.properties.session_id = localStorage.getItem("session_id");
+                return ctx;
+            }
+
+            async page(ctx) {
+                ctx.event.properties.session_id = localStorage.getItem("session_id");
+                ctx.event.properties.fbp = getFbp();
+                return ctx;
+            }
+
+            async identify(ctx) {
+                ctx.event.context.session_id = localStorage.getItem("session_id");
+                return ctx;
+            }
+        }
+
+        window.analytics.register(new session_tracker());
+        window.analytics.register(new product_changes_tracker());
+
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -30,7 +176,10 @@
             margin-bottom: 5px;
         }
 
-        input[type="text"], input[type="email"], select, textarea {
+        input[type="text"],
+        input[type="email"],
+        select,
+        textarea {
             width: 100%;
             padding: 10px;
             margin-bottom: 10px;
@@ -49,94 +198,108 @@
         }
     </style>
     <script type="text/javascript">
-      window.heapReadyCb=window.heapReadyCb||[],window.heap=window.heap||[],heap.load=function(e,t){window.heap.envId=e,window.heap.clientConfig=t=t||{},window.heap.clientConfig.shouldFetchServerConfig=!1;var a=document.createElement("script");a.type="text/javascript",a.async=!0,a.src="https://cdn.us.heap-api.com/config/"+e+"/heap_config.js";var r=document.getElementsByTagName("script")[0];r.parentNode.insertBefore(a,r);var n=["init","startTracking","stopTracking","track","resetIdentity","identify","getSessionId","getUserId","getIdentity","addUserProperties","addEventProperties","removeEventProperty","clearEventProperties","addAccountProperties","addAdapter","addTransformer","addTransformerFn","onReady","addPageviewProperties","removePageviewProperty","clearPageviewProperties","trackPageview"],i=function(e){return function(){var t=Array.prototype.slice.call(arguments,0);window.heapReadyCb.push({name:e,fn:function(){heap[e]&&heap[e].apply(heap,t)}})}};for(var p=0;p<n.length;p++)heap[n[p]]=i(n[p])};
-      heap.load("3745202683");
+        window.heapReadyCb = window.heapReadyCb || [], window.heap = window.heap || [], heap.load = function (e, t) { window.heap.envId = e, window.heap.clientConfig = t = t || {}, window.heap.clientConfig.shouldFetchServerConfig = !1; var a = document.createElement("script"); a.type = "text/javascript", a.async = !0, a.src = "https://cdn.us.heap-api.com/config/" + e + "/heap_config.js"; var r = document.getElementsByTagName("script")[0]; r.parentNode.insertBefore(a, r); var n = ["init", "startTracking", "stopTracking", "track", "resetIdentity", "identify", "getSessionId", "getUserId", "getIdentity", "addUserProperties", "addEventProperties", "removeEventProperty", "clearEventProperties", "addAccountProperties", "addAdapter", "addTransformer", "addTransformerFn", "onReady", "addPageviewProperties", "removePageviewProperty", "clearPageviewProperties", "trackPageview"], i = function (e) { return function () { var t = Array.prototype.slice.call(arguments, 0); window.heapReadyCb.push({ name: e, fn: function () { heap[e] && heap[e].apply(heap, t) } }) } }; for (var p = 0; p < n.length; p++)heap[n[p]] = i(n[p]) };
+        heap.load("3745202683");
     </script>
 </head>
+
 <body>
 
-<div class="container">
-    <h1>Web Tracking Test Page</h1>
+    <div class="container">
+        <h1>Web Tracking Test Page</h1>
 
-    <!-- Random Input Fields -->
-    <div class="field-group">
-        <label for="name">Name</label>
-        <input type="text" id="name" placeholder="Enter your name">
+        <!-- Random Input Fields -->
+        <div class="field-group">
+            <label for="name">Name</label>
+            <input type="text" id="name" placeholder="Enter your name">
+        </div>
+
+        <div class="field-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Enter your email">
+        </div>
+
+        <div class="field-group">
+            <label for="age">Age</label>
+            <input type="number" id="age" placeholder="Enter your age">
+        </div>
+
+        <div class="field-group">
+            <label for="gender">Gender</label>
+            <select id="gender">
+                <option value="">Select</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+
+        <div class="field-group">
+            <label for="comments">Comments</label>
+            <textarea id="comments" rows="4" placeholder="Enter your comments"></textarea>
+        </div>
+
+        <!-- Random Buttons -->
+        <div class="field-group">
+            <button id="submitBtn">Submit</button>
+            <button id="resetBtn">Reset</button>
+            <button id="randomBtn">Random Action</button>
+        </div>
+
+        <div class="field-group">
+            <label for="product_class">Produt Class</label>
+            <select id="product_class">
+                <option value="prod1">Product1</option>
+                <option value="prod2">Product2</option>
+                <option value="prod3">Product3</option>
+                <option value="prod4">Product4</option>
+                <option value="prod5">Product5</option>
+            </select>
+        </div>
+        
+        <div class="field-group">
+            <button id="trackBtn1">Track  get_premiums</button>
+        </div>
+
+        <div class="field-group">
+            <button id="trackBtn2">Fire identify</button>
+        </div>
+
     </div>
 
-    <div class="field-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="Enter your email">
-    </div>
+    <script>
+        const userid = crypto.randomUUID();
 
-    <div class="field-group">
-        <label for="age">Age</label>
-        <input type="number" id="age" placeholder="Enter your age">
-    </div>
+        // Sample click event handlers to simulate tracking interactions
+        document.getElementById('submitBtn').addEventListener('click', function () {
+            console.log('Submit button clicked');
+            alert('Submit button clicked');
+        });
 
-    <div class="field-group">
-        <label for="gender">Gender</label>
-        <select id="gender">
-            <option value="">Select</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-        </select>
-    </div>
+        document.getElementById('resetBtn').addEventListener('click', function () {
+            console.log('Reset button clicked');
+            alert('Reset button clicked');
+        });
 
-    <div class="field-group">
-        <label for="comments">Comments</label>
-        <textarea id="comments" rows="4" placeholder="Enter your comments"></textarea>
-    </div>
+        document.getElementById('randomBtn').addEventListener('click', function () {
+            console.log('Random button clicked');
+            alert('Random button clicked');
+        });
 
-    <!-- Random Buttons -->
-    <div class="field-group">
-        <button id="submitBtn">Submit</button>
-        <button id="resetBtn">Reset</button>
-        <button id="randomBtn">Random Action</button>
-    </div>
+        document.getElementById('trackBtn1').addEventListener('click', function () {
+            analytics.track('get_premiums', { data: { product_class: document.getElementById('product_class').value } })
+        });
 
-    <!-- Additional Content -->
-    <div class="field-group">
-        <button id="trackBtn1">Track Action 1</button>
-        <button id="trackBtn2">Track Action 2</button>
-        <button id="trackBtn3">Track Action 3</button>
-    </div>
+        document.getElementById('trackBtn2').addEventListener('click', function () {
+            analytics.identify(userid, { firstName: 'Jon', lastName: 'Doe'})
+        });
 
-</div>
-
-<script>
-    // Sample click event handlers to simulate tracking interactions
-    document.getElementById('submitBtn').addEventListener('click', function() {
-        console.log('Submit button clicked');
-        alert('Submit button clicked');
-    });
-
-    document.getElementById('resetBtn').addEventListener('click', function() {
-        console.log('Reset button clicked');
-        alert('Reset button clicked');
-    });
-
-    document.getElementById('randomBtn').addEventListener('click', function() {
-        console.log('Random button clicked');
-        alert('Random button clicked');
-    });
-
-    document.getElementById('trackBtn1').addEventListener('click', function() {
-        console.log('Track Action 1 clicked');
-        alert('Track Action 1 clicked');
-    });
-
-    document.getElementById('trackBtn2').addEventListener('click', function() {
-        console.log('Track Action 2 clicked');
-        alert('Track Action 2 clicked');
-    });
-
-    document.getElementById('trackBtn3').addEventListener('click', function() {
-        console.log('Track Action 3 clicked');
-        alert('Track Action 3 clicked');
-    });
-</script>
+        document.getElementById('trackBtn3').addEventListener('click', function () {
+            console.log('Track Action 3 clicked');
+            alert('Track Action 3 clicked');
+        });
+    </script>
 
 </body>
+
 </html>
